@@ -7,18 +7,18 @@ from .test_create_ha import resource_prefix
 from lib.aws import AmazonWebServices
 import pytest
 
-EKS_ACCESS_KEY = os.environ.get('RANCHER_EKS_ACCESS_KEY', "")
-EKS_SECRET_KEY = os.environ.get('RANCHER_EKS_SECRET_KEY', "")
+EKS_ACCESS_KEY = os.environ.get('RANCHER_EKS_ACCESS_KEY', "AKIAR2PTKWHF562AK7VB")
+EKS_SECRET_KEY = os.environ.get('RANCHER_EKS_SECRET_KEY', "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")
 EKS_REGION = os.environ.get('RANCHER_EKS_REGION', "us-east-2")
 EKS_K8S_VERSION = os.environ.get('RANCHER_EKS_K8S_VERSION', "1.17")
 EKS_NODESIZE = os.environ.get('RANCHER_EKS_NODESIZE', 2)
 KMS_KEY = os.environ.get('RANCHER_KMS_KEY', None)
 SECRET_ENCRYPTION = os.environ.get('RANCHER_SECRET_ENCRYPTION', False)
 LOGGING_TYPES = os.environ.get('RANCHER_LOGGING_TYPES', None)
-EKS_SERVICE_ROLE = os.environ.get('RANCHER_EKS_SERVICE_ROLE', None)
+EKS_SERVICE_ROLE = os.environ.get('RANCHER_EKS_SERVICE_ROLE', "")
 EKS_SUBNETS = os.environ.get('RANCHER_EKS_SUBNETS', None)
 EKS_SECURITYGROUP = os.environ.get('RANCHER_EKS_SECURITYGROUP', None)
-AWS_SSH_KEY_NAME = os.environ.get("AWS_SSH_KEY_NAME")
+AWS_SSH_KEY_NAME = os.environ.get("AWS_SSH_KEY_NAME", "jenkins-rke-validation")
 EKS_PUBLIC_ACCESS_SOURCES = \
     os.environ.get('RANCHER_EKS_PUBLIC_ACCESS_SOURCES', None)
 ekscredential = pytest.mark.skipif(not (EKS_ACCESS_KEY and EKS_SECRET_KEY),
@@ -63,7 +63,7 @@ eks_config = {
     }
 
 
-@ekscredential
+
 def test_eks_v2_hosted_cluster_create_basic():
     """
     Create a hosted EKS v2 cluster with all default values from the UI
@@ -204,7 +204,6 @@ def create_resources_eks():
 
 @pytest.fixture(scope='module', autouse="True")
 def create_project_client(request):
-
     def fin():
         client = get_user_client()
         for name, cluster in cluster_details.items():
@@ -214,6 +213,7 @@ def create_project_client(request):
             AmazonWebServices().delete_eks_cluster(cluster_name=display_name)
 
     request.addfinalizer(fin)
+
 
 
 def create_and_validate_eks_cluster(cluster_config, imported=False):
@@ -312,6 +312,8 @@ def get_eks_config_all(cluster_name):
     eks_config_temp["loggingTypes"] = get_logging_types()
     eks_config_temp["serviceRole"] = EKS_SERVICE_ROLE
     eks_config_temp["ec2SshKey"] = AWS_SSH_KEY_NAME
+    eks_config_temp["nodeGroups"][0]["version"] = EKS_K8S_VERSION
+    eks_config_temp["nodeGroups"][0]["subnets"] = []
     return eks_config_temp
 
 
@@ -456,7 +458,7 @@ def validate_nodegroup(nodegroup_list, cluster_name):
             "diskSize is incorrect on the nodes"
         # check ec2SshKey
         if "ec2SshKey" in nodegroup.keys() and \
-                nodegroup["ec2SshKey"] is not "":
+                nodegroup["ec2SshKey"] != "":
             assert nodegroup["ec2SshKey"] \
                 == eks_nodegroup["nodegroup"]["remoteAccess"]["ec2SshKey"], \
                 "Ssh key is incorrect on the nodes"
